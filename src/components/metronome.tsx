@@ -1,49 +1,79 @@
 import useSound from "use-sound";
-import metronome from "../metronome.mp3";
+import metronomeSound from "../metronome.mp3";
 import { useEffect, useRef, useState } from "react";
-import { start } from "repl";
 import { useRecoilState } from "recoil";
-import { bpmState } from "../App";
+import { metronomeState, noteState } from "../App";
 
 export default function Metronome() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [bpm, setBpm] = useRecoilState(bpmState);
-  const bpmRef = useRef<number>(bpm);
+  const [metronome, setMetronome] = useRecoilState(metronomeState);
+  const metronomeRef = useRef<MetronomeData>(metronome);
 
   const [sync, setSync] = useState<number>(0);
   const syncRef = useRef<number>(sync);
 
-  const [play, { stop }] = useSound(metronome);
+  const [_, setNote] = useRecoilState(noteState);
+
+  const [play] = useSound(metronomeSound);
 
   useEffect(() => {
-    bpmRef.current = bpm;
+    metronomeRef.current = metronome;
     syncRef.current = sync;
-  }, [bpm, sync]);
+  }, [metronome, sync]);
+
+  const handleBpmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = Number(e.target.value);
+    setMetronome((prev) => ({ ...prev, bpm: value }));
+  };
 
   const startMetronme = () => {
     if (timerRef.current) return;
 
-    const interval = 60000 / bpmRef.current;
+    let bpm = metronome.bpm;
+    const interval = 60000 / metronomeRef.current.bpm;
     let expectedTime = Date.now();
+    let beatCnt = 0;
 
     const timerFunction = () => {
-      console.log("1");
+      console.log("play");
       play();
       const diff = Date.now() - expectedTime;
+      if (bpm !== metronomeRef.current.bpm) {
+        bpm = metronomeRef.current.bpm;
+        setMetronome((prev) => ({ ...prev, barStart: Date.now() }));
+        beatCnt = 0;
+        setNote([false, false, false, false]);
+      }
 
       if (syncRef.current != 0) {
-        console.log(2);
         expectedTime += syncRef.current;
         setSync(0);
       }
-      expectedTime += 60000 / bpmRef.current;
+
+      if (beatCnt === metronomeRef.current.timeSignature.beatPerBar) {
+        setMetronome((prev) => ({ ...prev, barStart: Date.now() }));
+        beatCnt = 0;
+        setNote([false, false, false, false]);
+      }
+      beatCnt += 1;
+      expectedTime += 60000 / metronomeRef.current.bpm;
+
       timerRef.current = setTimeout(
         timerFunction,
         Math.max(0, interval - diff)
       );
     };
 
+    setMetronome((prev) => ({
+      ...prev,
+      barStart: Date.now(),
+      bpm: metronome.bpm,
+      currentBeat: 0,
+      isActive: true,
+    }));
+    setNote([false, false, false, false]);
+    play();
     timerRef.current = setTimeout(timerFunction);
   };
 
@@ -51,13 +81,15 @@ export default function Metronome() {
     if (!timerRef.current) return;
     clearTimeout(timerRef.current);
     timerRef.current = null;
+
+    setMetronome((prev) => ({ ...prev, isActive: false }));
   };
 
   return (
     <div className="flex flex-col">
       <input
-        value={bpm}
-        onChange={(e) => setBpm(Number(e.target.value))}
+        value={metronome.bpm}
+        onChange={handleBpmChange}
         type="number"
         className="border border-black"
       />

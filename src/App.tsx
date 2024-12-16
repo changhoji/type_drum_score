@@ -7,9 +7,33 @@ export const musicState = atom<string>({
   default: "",
 });
 
-export const bpmState = atom<number>({
-  key: "bpmState",
-  default: 100,
+export const metronomeState = atom<MetronomeData>({
+  key: "metronomeState",
+  default: {
+    barStart: Date.now(),
+    bpm: 100,
+    currentBeat: 0,
+    isActive: false,
+    timeSignature: {
+      beatPerBar: 4,
+      note: 4,
+    },
+  },
+});
+
+export const noteState = atom<boolean[]>({
+  key: "noteState",
+  default: [false, false, false, false],
+});
+
+export const voiceState = atom<string[]>({
+  key: "voiceState",
+  default: [],
+});
+
+export const musicTimeState = atom<number>({
+  key: "musicTimeState",
+  default: 0,
 });
 
 function App() {
